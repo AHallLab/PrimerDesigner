@@ -1,5 +1,5 @@
 __author__ = 'Joshua Ball (joshua.ball@earlham.ac.uk)'
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 
 import argparse
 import primer3
@@ -12,15 +12,18 @@ from PrimerFilters import *
 parser = argparse.ArgumentParser(description='Primer Designer')
 parser.add_argument('-i', '--input', help='Input file name', required=True)
 parser.add_argument('-n', '--number', help='Number of Primer pairs to return', default=5)
+parser.add_argument('-l', '--lower', help='Min Primer Product Length', default=200)
+parser.add_argument('-u', '--upper', help='Max Primer Product Length', default=500)
 args = parser.parse_args()
 
 # create the .csv file and enter headers. Also assign date and time stamped names for CSV and TXT files to be made.
 csvfilename = 'LF-RF Primers '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.csv'
 txtfilename = 'LF-RF CDS with bsaI '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.txt'
-headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty', 'Primer Forward', 'Primer Reverse',
-        'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH',
-        'Right Self Any TH', 'Left Self End TH', 'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH',
-        'Left End Stability', 'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size']
+headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+            'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM',
+            'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH', 'Right Self End TH',
+            'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability', 'Right End Stability', 'Pair Compl Any TH',
+            'Pair Compl End TH', 'Pair Product Size', 'Primer Product Sequence']
 with open(csvfilename, 'w') as f:
     writer = csv.DictWriter(f, fieldnames=headings)
     writer.writeheader()
@@ -50,12 +53,22 @@ for seq_record in myfast:
 
     else:
         # Use Primer 3 and get results for Left Flanking Region.
-        num = int(args.number) # number of primer pairs to generate.
+        num = int(args.number)  # number of primer pairs to generate.
+        lower = int(args.lower)
+        upper = int(args.upper)
+
+        if SEQ[0].isupper():
+            target_start = (CDS_start+(CDS_len-2))
+            flank = 'Right'
+        else:
+            target_start = CDS_start
+            flank = 'Left'
 
         primerlist = (primer3.bindings.designPrimers(
             {
                 'SEQUENCE_ID': ID,
                 'SEQUENCE_TEMPLATE': SEQ,
+                'SEQUENCE_TARGET': [target_start, 3]
             },
             {
                 'PRIMER_TASK': 'generic',
@@ -65,13 +78,13 @@ for seq_record in myfast:
                 'PRIMER_OPT_SIZE': 20,
                 'PRIMER_MIN_SIZE': 18,
                 'PRIMER_MAX_SIZE': 30,
-                'PRIMER_PRODUCT_SIZE_RANGE': [200, 500],
+                'PRIMER_PRODUCT_SIZE_RANGE': [lower, upper],
                 'PRIMER_OPT_TM': 55,
                 'PRIMER_MIN_TM': 50,
                 'PRIMER_MAX_TM': 60,
                 'PRIMER_EXPLAIN_FLAG': 1,
                 'PRIMER_MAX_END_STABILITY': 6.0,
-                'PRIMER_MIN_GC': 45.0,
+                'PRIMER_MIN_GC': 44.0,
                 'PRIMER_OPT_GC_PERCENT': 50.0,
                 'PRIMER_MAX_GC': 80.0
             }
@@ -105,7 +118,7 @@ for seq_record in myfast:
         for j in splitprimers:
             splitprimers[j]['Primer'] = str(int(j)+1)
             splitprimers[j]['Gene'] = ID
-            splitprimers[j]['Flank'] = 'Left'
+            splitprimers[j]['Flank'] = flank
             primers.append(splitprimers[j])
 
         #print(primers)
@@ -124,9 +137,11 @@ for seq_record in myfast:
             primer = SEQ[primerstart:primerend]
             if bsa_in_primer(primer):
                 i['bsaI in Primer'] = 'Yes'
+                i['Primer Product'] = primer
                 fprimers.append(i)
             else:
                 i['bsaI in Primer'] = 'No'
+                i['Primer Product'] = primer
                 fprimers.append(i)
 
         #print(fprimers)
@@ -135,13 +150,12 @@ for seq_record in myfast:
         #print(fprimers)
 
         # Output .txt or .csv
-        headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty', 'Primer Forward',
-                    'Primer Reverse',
-                    'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM', 'Left GC%', 'Right GC%',
-                    'Left Self Any TH',
-                    'Right Self Any TH', 'Left Self End TH', 'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH',
-                    'Left End Stability', 'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH',
-                    'Pair Product Size']
+        headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+                    'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM',
+                    'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH',
+                    'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
+                    'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size',
+                    'Primer Product Sequence']
         with open(csvfilename, 'a') as f:
             writer = csv.DictWriter(f, fieldnames=headings)
             writer.writerows(fprimers)
