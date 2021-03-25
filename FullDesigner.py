@@ -18,11 +18,13 @@ args = parser.parse_args()
 
 # create the .csv file and enter headers. Also assign date and time stamped names for CSV and TXT files to be made.
 csvfilename = 'Primers '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.csv'
-headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+headings = ['Gene', 'Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
             'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM',
             'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH', 'Right Self End TH',
             'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability', 'Right End Stability', 'Pair Compl Any TH',
-            'Pair Compl End TH', 'Pair Product Size', 'bsaI Start', 'Primer Product Sequence']
+            'Pair Compl End TH', 'Pair Product Size', 'bsaI in Product', 'bsaI Start', 'bsmbI in Product',
+            'bsmbI Start', 'bspqI in Product', 'bspqI Start', 'btgzI in Product', 'btgzI Start',
+            'Primer Product Sequence']
 with open(csvfilename, 'w') as f:
     writer = csv.DictWriter(f, fieldnames=headings)
     writer.writeheader()
@@ -117,7 +119,8 @@ for seq_record in myfast:
 
     # print(leftprimers)
 
-    # Check for bsaI and filter primers and append key and value of 'Yes' or 'No'
+    # Check for bsaI, and other enzymes, and filter primers and append key and value of 'Yes' or 'No' this also checks
+    # for start position of the enzymes and includes this as well as including the full theoretical product sequence
     leftfprimers = []
     check = re.compile(r'PRIMER_LEFT_\d+$')
     check2 = re.compile(r'PRIMER_RIGHT_\d+$')
@@ -131,16 +134,40 @@ for seq_record in myfast:
                 pass
         leftprimer = SEQ[leftprimerstart:leftprimerend]
         if bsa_in_primer(leftprimer):
-            i['bsaI in Primer'] = 'Yes'
+            i['bsaI in Product'] = 'Yes'
             result = re.search(r'ggtctc', leftprimer) or re.search(r'gagacc', leftprimer)
             i['bsaI Start'] = result.start()
             i['Primer Product'] = leftprimer
             leftfprimers.append(i)
         else:
-            i['bsaI in Primer'] = 'No'
+            i['bsaI in Product'] = 'No'
             i['bsaI Start'] = 'n/a'
             i['Primer Product'] = leftprimer
             leftfprimers.append(i)
+
+        if bsmbI_in_primer(leftprimer):
+            i['bsmbI in Product'] = 'Yes'
+            r1 = re.search(r'cgtctc', leftprimer) or re.search(r'gagacg', leftprimer)
+            i['bsmbI Start'] = r1.start()
+        else:
+            i['bsmbI in Product'] = 'No'
+            i['bsmbI Start'] = 'n/a'
+
+        if bspqI_in_primer(leftprimer):
+            i['bspqI in Product'] = 'Yes'
+            r2 = re.search(r'gctcttc', leftprimer) or re.search(r'gaagagc', leftprimer)
+            i['bspqI Start'] = r2.start()
+        else:
+            i['bspqI in Product'] = 'No'
+            i['bspqI Start'] = 'n/a'
+
+        if btgzI_in_primer(leftprimer):
+            i['btgzI in Product'] = 'Yes'
+            r3 = re.search(r'gcgatg', leftprimer) or re.search(r'catcgc', leftprimer)
+            i['btgzI Start'] = r3.start()
+        else:
+            i['btgzI in Product'] = 'No'
+            i['btgzI Start'] = 'n/a'
 
     # print(leftfprimers)
 
@@ -213,27 +240,52 @@ for seq_record in myfast:
                 pass
         rightprimer = SEQ[rightprimerstart:rightprimerend]
         if bsa_in_primer(rightprimer):
-            i['bsaI in Primer'] = 'Yes'
+            i['bsaI in Product'] = 'Yes'
             result = re.search(r'ggtctc', rightprimer) or re.search(r'gagacc', rightprimer)
             i['bsaI Start'] = result.start()
             i['Primer Product'] = rightprimer
             rightfprimers.append(i)
         else:
-            i['bsaI in Primer'] = 'No'
+            i['bsaI in Product'] = 'No'
             i['bsaI Start'] = 'n/a'
             i['Primer Product'] = rightprimer
             rightfprimers.append(i)
+
+        if bsmbI_in_primer(rightprimer):
+            i['bsmbI in Product'] = 'Yes'
+            r1 = re.search(r'cgtctc', rightprimer) or re.search(r'gagacg', rightprimer)
+            i['bsmbI Start'] = r1.start()
+        else:
+            i['bsmbI in Product'] = 'No'
+            i['bsmbI Start'] = 'n/a'
+
+        if bspqI_in_primer(rightprimer):
+            i['bspqI in Product'] = 'Yes'
+            r2 = re.search(r'gctcttc', rightprimer) or re.search(r'gaagagc', rightprimer)
+            i['bspqI Start'] = r2.start()
+        else:
+            i['bspqI in Product'] = 'No'
+            i['bspqI Start'] = 'n/a'
+
+        if btgzI_in_primer(rightprimer):
+            i['btgzI in Product'] = 'Yes'
+            r3 = re.search(r'gcgatg', rightprimer) or re.search(r'catcgc', rightprimer)
+            i['btgzI Start'] = r3.start()
+        else:
+            i['btgzI in Product'] = 'No'
+            i['btgzI Start'] = 'n/a'
 
     rightfprimers = replacekey(rightfprimers)
     # print(rightfprimers)
 
     # Output .txt or .csv
-    headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
-                'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM',
-                'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH',
-                'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
-                'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size', 'bsaI Start',
-                'Primer Product Sequence']
+    headings = ['Gene', 'Primer', 'Flank', 'Pair Penalty', 'Left Penalty',
+                'Right Penalty', 'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)',
+                'Left TM', 'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH',
+                'Left Self End TH', 'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
+                'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size','bsaI in Product',
+                'bsaI Start', 'bsmbI in Product', 'bsmbI Start', 'bspqI in Product', 'bspqI Start', 'btgzI in Product',
+                'btgzI Start', 'Primer Product Sequence']
     with open(csvfilename, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=headings)
         writer.writerows(leftfprimers)
