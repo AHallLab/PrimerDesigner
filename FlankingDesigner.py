@@ -18,11 +18,13 @@ args = parser.parse_args()
 
 # create the .csv file and enter headers. Also assign date and time stamped names for CSV and TXT files to be made.
 csvfilename = 'LF-RF Primers '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.csv'
-headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+headings = ['Gene', 'Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
             'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM',
             'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH', 'Right Self End TH',
             'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability', 'Right End Stability', 'Pair Compl Any TH',
-            'Pair Compl End TH', 'Pair Product Size', 'bsaI Start', 'Primer Product Sequence']
+            'Pair Compl End TH', 'Pair Product Size', 'bsaI in Product', 'bsaI Start', 'bsmbI in Product',
+            'bsmbI Start', 'bspqI in Product', 'bspqI Start', 'btgzI in Product', 'btgzI Start',
+            'Primer Product Sequence']
 with open(csvfilename, 'w') as f:
     writer = csv.DictWriter(f, fieldnames=headings)
     writer.writeheader()
@@ -134,18 +136,43 @@ for seq_record in myfast:
             i['Primer Product'] = primer
             fprimers.append(i)
 
+        if bsmbI_in_primer(primer):
+            i['bsmbI in Product'] = 'Yes'
+            r1 = re.search(r'cgtctc', primer) or re.search(r'gagacg', primer)
+            i['bsmbI Start'] = r1.start()
+        else:
+            i['bsmbI in Product'] = 'No'
+            i['bsmbI Start'] = 'n/a'
+
+        if bspqI_in_primer(primer):
+            i['bspqI in Product'] = 'Yes'
+            r2 = re.search(r'gctcttc', primer) or re.search(r'gaagagc', primer)
+            i['bspqI Start'] = r2.start()
+        else:
+            i['bspqI in Product'] = 'No'
+            i['bspqI Start'] = 'n/a'
+
+        if btgzI_in_primer(primer):
+            i['btgzI in Product'] = 'Yes'
+            r3 = re.search(r'gcgatg', primer) or re.search(r'catcgc', primer)
+            i['btgzI Start'] = r3.start()
+        else:
+            i['btgzI in Product'] = 'No'
+            i['btgzI Start'] = 'n/a'
+
     # print(fprimers)
 
     fprimers = replacekey(fprimers)
     # print(fprimers)
 
     # Output .txt or .csv
-    headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
-                'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM',
-                'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH',
-                'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
-                'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size', 'bsaI Start',
-                'Primer Product Sequence']
+    headings = ['Gene', 'Primer', 'Flank', 'Pair Penalty', 'Left Penalty',
+                'Right Penalty', 'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)',
+                'Left TM', 'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH',
+                'Left Self End TH', 'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
+                'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size','bsaI in Product',
+                'bsaI Start', 'bsmbI in Product', 'bsmbI Start', 'bspqI in Product', 'bspqI Start', 'btgzI in Product',
+                'btgzI Start', 'Primer Product Sequence']
     with open(csvfilename, 'a') as f:
         writer = csv.DictWriter(f, fieldnames=headings)
         writer.writerows(fprimers)
