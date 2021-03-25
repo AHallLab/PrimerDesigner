@@ -23,7 +23,7 @@ of the coding sequence (in test cases we used 200bp).
 
 The output for both method is  a .csv file of left and right primers for each gene, along with additional information.
 
-Additionally, the scripts look for bsaI regions in the theoretical product. For detection in the product, a column is 
+Additionally, the scripts look for bsaI regions, and regions for other enzymes of interest, in the theoretical product. For detection in the product, a column is 
 added to the .csv denoting if bsaI is present or not.
 
 (N.B. For the FlankingDesigner script this will only be looking in the included section of coding sequence, so if there 
