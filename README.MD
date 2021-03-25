@@ -24,7 +24,7 @@ of the coding sequence (in test cases we used 200bp).
 The output for both method is  a .csv file of left and right primers for each gene, along with additional information.
 
 Additionally the scripts look for bsaI regions in both the gene/ coding sequence, and the primers. If there is one of 
-these in the gene; the script will not generate primers for the specific gene, and will instead add the gene name to a
+these in the gene; the script will not generate primer for the specific gene, and will instead add the gene name to a
 .txt file. For detection in primers, a column is added to the .csv denoting if bsaI is present in the primer or not.
 
 (N.B. For the FlankingDesigner script this will only be looking in the included section of coding sequence, so if there 
@@ -44,13 +44,22 @@ Download the FullDesigner.py, FlankingDesigner.py and PrimerFilters.py files and
 
 To run the script from the command line, with an input FASTA file:
 ```bash
-python main.py -i inputfile.fasta
+python FullDesigner.py -i inputfile.fasta
 ```
 or use:
 ```bash
-python main.py -i inputfile.fasta -n 8
+python FullDesigner.py -i inputfile.fasta -n 8
 ```
 to change the number of primer pairs generated (n can be any integer, and the default is 5).
+
+Users can also select the length of the primer product that is generated. The default is between 200 and 500 bp.
+However, Primer3 will generally create primers to the shorter end of this range.
+
+To choose the lengths users can use the following arguments:
+```bash
+python FullDesigner.py -i inputfile.fasta -l=500 -u=550
+```
+Where -l is for the lower length range and -u for the upper. 
 
 ### Author
 Joshua M Ball (joshua.ball@earlham.ac.uk)
