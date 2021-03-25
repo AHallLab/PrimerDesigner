@@ -22,6 +22,24 @@ def bsa_in_primer(primer):
     else:
         return False
 
+def bsmbI_in_primer(primer):
+    if re.search(r'cgtctc', primer) or re.search(r'gagacg', primer):
+        return True
+    else:
+        return False
+
+def bspqI_in_primer(primer):
+    if re.search(r'gctcttc', primer) or re.search(r'gaagagc', primer):
+        return True
+    else:
+        return False
+
+def btgzI_in_primer(primer):
+    if re.search(r'gcgatg', primer) or re.search(r'catcgc', primer):
+        return True
+    else:
+        return False
+
 # function to remove some of the clunkier bits of info from primer3 output
 def cleanupdata(list_of_primers):
     newlist = list_of_primers
@@ -37,7 +55,9 @@ def replacekey(finallist):
                    'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM', 'Left GC%', 'Right GC%',
                    'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH', 'Right Self End TH', 'Left Hairpin TH',
                    'Right Hairpin TH', 'Left End Stability', 'Right End Stability', 'Pair Compl Any TH',
-                   'Pair Compl End TH', 'Pair Product Size', 'Primer', 'Gene', 'Flank', 'bsaI in Primer']
+                   'Pair Compl End TH', 'Pair Product Size', 'Primer', 'Gene', 'Flank', 'bsaI in Product', 'bsaI Start',
+                   'Primer Product Sequence', 'bsmbI in Product', 'bsmbI Start', 'bspqI in Product', 'bspqI Start',
+                   'btgzI in Product', 'btgzI Start']
     for i in range(len(finallist)):
         curr_keys = list(finallist[i].copy().keys())
         for j in range(len(replacekeys)):
