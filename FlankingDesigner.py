@@ -1,5 +1,5 @@
 __author__ = 'Joshua Ball (joshua.ball@earlham.ac.uk)'
-__version__ = '1.0.1'
+__version__ = '1.0.2'
 
 import argparse
 import primer3
@@ -18,12 +18,11 @@ args = parser.parse_args()
 
 # create the .csv file and enter headers. Also assign date and time stamped names for CSV and TXT files to be made.
 csvfilename = 'LF-RF Primers '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.csv'
-txtfilename = 'LF-RF CDS with bsaI '+datetime.today().strftime('%y-%m-%d %H.%M.%S')+'.txt'
-headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
             'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM', 'Right TM',
             'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH', 'Right Self End TH',
             'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability', 'Right End Stability', 'Pair Compl Any TH',
-            'Pair Compl End TH', 'Pair Product Size', 'Primer Product Sequence']
+            'Pair Compl End TH', 'Pair Product Size', 'bsaI Start', 'Primer Product Sequence']
 with open(csvfilename, 'w') as f:
     writer = csv.DictWriter(f, fieldnames=headings)
     writer.writeheader()
@@ -43,120 +42,111 @@ for seq_record in myfast:
     #print("CDS Start = ", CDS_start)
     #print("CDS Length = ", CDS_len)
 
-    if bsa_in_CDS(SEQ):
-        bsaincds = []
-        bsaincds.append(ID)
-        with open(txtfilename, 'a') as f2:
-            for item in bsaincds:
-                f2.write('%s\n' % item)
-                f2.close()
+    # Use Primer 3 and get results for Left Flanking Region.
+    num = int(args.number)  # number of primer pairs to generate.
+    lower = int(args.lower)
+    upper = int(args.upper)
 
+    if SEQ[0].isupper():
+        target_start = (CDS_start + (CDS_len - 2))
+        flank = 'Right'
     else:
-        # Use Primer 3 and get results for Left Flanking Region.
-        num = int(args.number)  # number of primer pairs to generate.
-        lower = int(args.lower)
-        upper = int(args.upper)
+        target_start = CDS_start
+        flank = 'Left'
 
-        if SEQ[0].isupper():
-            target_start = (CDS_start+(CDS_len-2))
-            flank = 'Right'
+    primerlist = (primer3.bindings.designPrimers(
+        {
+            'SEQUENCE_ID': ID,
+            'SEQUENCE_TEMPLATE': SEQ,
+            'SEQUENCE_TARGET': [target_start, 3]
+        },
+        {
+            'PRIMER_TASK': 'generic',
+            'PRIMER_PICK_LEFT_PRIMER': 1,
+            'PRIMER_PICK_RIGHT_PRIMER': 1,
+            'PRIMER_NUM_RETURN': num,
+            'PRIMER_OPT_SIZE': 20,
+            'PRIMER_MIN_SIZE': 18,
+            'PRIMER_MAX_SIZE': 30,
+            'PRIMER_PRODUCT_SIZE_RANGE': [lower, upper],
+            'PRIMER_OPT_TM': 55,
+            'PRIMER_MIN_TM': 50,
+            'PRIMER_MAX_TM': 60,
+            'PRIMER_EXPLAIN_FLAG': 1,
+            'PRIMER_MAX_END_STABILITY': 6.0,
+            'PRIMER_MIN_GC': 44.0,
+            'PRIMER_OPT_GC_PERCENT': 50.0,
+            'PRIMER_MAX_GC': 80.0
+        }
+    ))
+    # print(primerlist)
+    # primerlist is the initial output of primer3
+
+    newlist = cleanupdata(primerlist)
+    # print(newlist)
+    # newlist is a filtered version of primerlist, number of primers returned and explains have been removed
+
+    # Separate the data based on the primer number in each key! This results in a dictionary of sub-dictionaries where a
+    # sub-dictionary is a primer pair
+    reg = re.compile(r'\d+')  # regex that finds the number (primer number) in the keys (e.g. PRIMER_PAIR_0_PENALTY)
+    splitprimers = {}  # This will be the dictionary that all sub-dictionaries go into
+    for k, v in newlist.items():
+        m = reg.search(k)
+        if m:
+            numb = m.group()
+            splitprimers.setdefault(numb, {})[k] = v
         else:
-            target_start = CDS_start
-            flank = 'Left'
+            print('Invalid key:', k, v)
 
-        primerlist = (primer3.bindings.designPrimers(
-            {
-                'SEQUENCE_ID': ID,
-                'SEQUENCE_TEMPLATE': SEQ,
-                'SEQUENCE_TARGET': [target_start, 3]
-            },
-            {
-                'PRIMER_TASK': 'generic',
-                'PRIMER_PICK_LEFT_PRIMER': 1,
-                'PRIMER_PICK_RIGHT_PRIMER': 1,
-                'PRIMER_NUM_RETURN': num,
-                'PRIMER_OPT_SIZE': 20,
-                'PRIMER_MIN_SIZE': 18,
-                'PRIMER_MAX_SIZE': 30,
-                'PRIMER_PRODUCT_SIZE_RANGE': [lower, upper],
-                'PRIMER_OPT_TM': 55,
-                'PRIMER_MIN_TM': 50,
-                'PRIMER_MAX_TM': 60,
-                'PRIMER_EXPLAIN_FLAG': 1,
-                'PRIMER_MAX_END_STABILITY': 6.0,
-                'PRIMER_MIN_GC': 44.0,
-                'PRIMER_OPT_GC_PERCENT': 50.0,
-                'PRIMER_MAX_GC': 80.0
-            }
-        ))
-        #print(primerlist)
-        # primerlist is the initial output of primer3
+    # print(splitprimers)
 
-        newlist = cleanupdata(primerlist)
-        #print(newlist)
-        # newlist is a filtered version of primerlist, number of primers returned and explains have been removed
+    # This adds 2 new keys and values to each primer-pair dictionary. 1 for the Primer pair number, and 1 for the Gene ID
+    # This also then turns the dictionary of sub-dictionaries into a LIST of dictionaries called primers, this is important
+    # for further steps.
 
-        # Separate the data based on the primer number in each key! This results in a dictionary of sub-dictionaries where a
-        # sub-dictionary is a primer pair
-        reg = re.compile(r'\d+') # regex that finds the number (primer number) in the keys (e.g. PRIMER_PAIR_0_PENALTY)
-        splitprimers = {} # This will be the dictionary that all sub-dictionaries go into
-        for k, v in newlist.items():
-            m=reg.search(k)
-            if m:
-                numb = m.group()
-                splitprimers.setdefault(numb, {})[k]=v
-            else:
-                print('Invalid key:', k, v)
+    primers = []
+    for j in splitprimers:
+        splitprimers[j]['Primer'] = str(int(j) + 1)
+        splitprimers[j]['Gene'] = ID
+        splitprimers[j]['Flank'] = flank
+        primers.append(splitprimers[j])
 
-        #print(splitprimers)
+    # print(primers)
 
-        # This adds 2 new keys and values to each primer-pair dictionary. 1 for the Primer pair number, and 1 for the Gene ID
-        # This also then turns the dictionary of sub-dictionaries into a LIST of dictionaries called primers, this is important
-        # for further steps.
+    # Check for bsaI and filter primers to remove any that contain bsaI
 
-        primers = []
-        for j in splitprimers:
-            splitprimers[j]['Primer'] = str(int(j)+1)
-            splitprimers[j]['Gene'] = ID
-            splitprimers[j]['Flank'] = flank
-            primers.append(splitprimers[j])
+    fprimers = []
+    check = re.compile(r'PRIMER_LEFT_\d+$')
+    check2 = re.compile(r'PRIMER_RIGHT_\d+$')
+    for i in primers:
+        for j in i:
+            if check.search(j):
+                primerstart = i[j][0]
+            elif check2.search(j):
+                primerend = i[j][0] + 1
+        primer = SEQ[primerstart:primerend]
+        if bsa_in_primer(primer):
+            i['bsaI in Primer'] = 'Yes'
+            i['Primer Product'] = primer
+            fprimers.append(i)
+        else:
+            i['bsaI in Primer'] = 'No'
+            i['Primer Product'] = primer
+            fprimers.append(i)
 
-        #print(primers)
+    # print(fprimers)
 
-        # Check for bsaI and filter primers to remove any that contain bsaI
+    fprimers = replacekey(fprimers)
+    # print(fprimers)
 
-        fprimers = []
-        check = re.compile(r'PRIMER_LEFT_\d+$')
-        check2 = re.compile(r'PRIMER_RIGHT_\d+$')
-        for i in primers:
-            for j in i:
-                if check.search(j):
-                    primerstart = i[j][0]
-                elif check2.search(j):
-                    primerend = i[j][0]+1
-            primer = SEQ[primerstart:primerend]
-            if bsa_in_primer(primer):
-                i['bsaI in Primer'] = 'Yes'
-                i['Primer Product'] = primer
-                fprimers.append(i)
-            else:
-                i['bsaI in Primer'] = 'No'
-                i['Primer Product'] = primer
-                fprimers.append(i)
-
-        #print(fprimers)
-
-        fprimers = replacekey(fprimers)
-        #print(fprimers)
-
-        # Output .txt or .csv
-        headings = ['Gene', 'Primer', 'bsaI in Primer', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
-                    'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM',
-                    'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH',
-                    'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
-                    'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size',
-                    'Primer Product Sequence']
-        with open(csvfilename, 'a') as f:
-            writer = csv.DictWriter(f, fieldnames=headings)
-            writer.writerows(fprimers)
-            f.close()
+    # Output .txt or .csv
+    headings = ['Gene', 'Primer', 'bsaI in Product', 'Flank', 'Pair Penalty', 'Left Penalty', 'Right Penalty',
+                'Primer Forward', 'Primer Reverse', 'Left (Start, Length)', 'Right (Start, Length)', 'Left TM',
+                'Right TM', 'Left GC%', 'Right GC%', 'Left Self Any TH', 'Right Self Any TH', 'Left Self End TH',
+                'Right Self End TH', 'Left Hairpin TH', 'Right Hairpin TH', 'Left End Stability',
+                'Right End Stability', 'Pair Compl Any TH', 'Pair Compl End TH', 'Pair Product Size', 'bsaI Start',
+                'Primer Product Sequence']
+    with open(csvfilename, 'a') as f:
+        writer = csv.DictWriter(f, fieldnames=headings)
+        writer.writerows(fprimers)
+        f.close()
